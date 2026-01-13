@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  avatar        String?
+  role          String    @default("USER")
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  downloads     Download[]
+
+  @@map("users")
+}
+
+model Wallpaper {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  price       Float
+  currency    String   @default("USD")
+  
+  // Media files
+  previewUrl  String   // Low quality preview video/gif
+  thumbnailUrl String  // Static thumbnail image
+  fileUrl     String   // Actual live wallpaper file (protected)
+  
+  // Metadata
+  category    String
+  tags        String   @default("[]") // JSON string for SQLite
+  resolution  String?  @default("1290x2796") // iPhone 15 Pro Max
+  fileSize    String?
+  duration    String?  // Duration of live wallpaper
+  
+  // Status
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  
+  // Stats
+  downloads   Int      @default(0)
+  views       Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems  OrderItem[]
+  downloadRecords Download[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("wallpapers")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique @default(cuid())
+  
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Payment details
+  totalAmount     Float
+  currency        String      @default("USD")
+  paymentMethod   String
+  paymentStatus   String      @default("PENDING")
+  paymentId       String?     // External payment ID (Stripe, PayPal, etc.)
+  
+  // Metadata
+  metadata        String?     // JSON string for SQLite
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  paidAt          DateTime?
+  
+  items           OrderItem[]
+  downloads       Download[]
+
+  @@index([userId])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String    @id @default(cuid())
+  
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  wallpaperId String
+  wallpaper   Wallpaper @relation(fields: [wallpaperId], references: [id])
+  
+  price       Float
+  currency    String    @default("USD")
+  
+  createdAt   DateTime  @default(now())
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Download {
+  id          String    @id @default(cuid())
+  
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  wallpaperId String
+  wallpaper   Wallpaper @relation(fields: [wallpaperId], references: [id])
+  
+  // Download tracking
+  downloadToken String  @unique @default(cuid())
+  downloadCount Int     @default(0)
+  maxDownloads  Int     @default(5)
+  expiresAt     DateTime
+  
+  // Security
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime @default(now())
+  lastDownloadAt DateTime?
+
+  @@index([userId])
+  @@index([downloadToken])
+  @@map("downloads")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("categories")
+}
