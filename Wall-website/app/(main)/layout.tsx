@@ -7,7 +7,13 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getCurrentUser()
+  const currentUser = await getCurrentUser()
+
+  // Cast user to match Navbar's expected type
+  const user = currentUser ? {
+    ...currentUser,
+    role: currentUser.role as 'USER' | 'ADMIN'
+  } : null
 
   return (
     <div className="flex flex-col min-h-screen">

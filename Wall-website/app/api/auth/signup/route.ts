@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     await setSession({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as 'USER' | 'ADMIN',
     })
 
     // Send welcome email (don't await to avoid blocking response)

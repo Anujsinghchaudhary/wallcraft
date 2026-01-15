@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
     }
 
     const wallpaper = await prisma.wallpaper.create({
-      data: result.data,
+      data: {
+        ...result.data,
+        tags: result.data.tags ? result.data.tags.join(', ') : '',
+      },
     })
 
     return NextResponse.json({ success: true, wallpaper })
@@ -47,11 +50,11 @@ export async function GET(request: NextRequest) {
 
     const where = search
       ? {
-          OR: [
-            { title: { contains: search, mode: 'insensitive' as const } },
-            { category: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
+        OR: [
+          { title: { contains: search, mode: 'insensitive' as const } },
+          { category: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }
       : {}
 
     const [wallpapers, total] = await Promise.all([

@@ -4,9 +4,8 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-import { 
-  CreditCard, 
-  Wallet,
+import {
+  CreditCard,
   Bitcoin,
   Loader2,
   Shield,
@@ -38,26 +37,14 @@ interface CheckoutFormProps {
   user: User
 }
 
-type PaymentMethod = 'STRIPE' | 'PAYPAL' | 'RAZORPAY' | 'CRYPTO_USDT'
+type PaymentMethod = 'RAZORPAY' | 'CRYPTO_USDT'
 
 const paymentMethods: { id: PaymentMethod; label: string; icon: React.ElementType; description: string }[] = [
   {
-    id: 'STRIPE',
-    label: 'Credit / Debit Card',
-    icon: CreditCard,
-    description: 'Visa, Mastercard, Amex',
-  },
-  {
-    id: 'PAYPAL',
-    label: 'PayPal',
-    icon: Wallet,
-    description: 'Pay with PayPal or Apple Pay',
-  },
-  {
     id: 'RAZORPAY',
-    label: 'UPI / Indian Cards',
+    label: 'Cards / UPI / Netbanking',
     icon: CreditCard,
-    description: 'GPay, PhonePe, Paytm, RuPay',
+    description: 'Visa, Mastercard, GPay, PhonePe, Paytm',
   },
   {
     id: 'CRYPTO_USDT',
@@ -70,7 +57,7 @@ const paymentMethods: { id: PaymentMethod; label: string; icon: React.ElementTyp
 export function CheckoutForm({ wallpaper, user }: CheckoutFormProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('STRIPE')
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('RAZORPAY')
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handlePayment = async () => {
@@ -94,18 +81,6 @@ export function CheckoutForm({ wallpaper, user }: CheckoutFormProps) {
 
       // Handle different payment methods
       switch (selectedMethod) {
-        case 'STRIPE':
-          // Redirect to Stripe checkout
-          if (data.url) {
-            window.location.href = data.url
-          }
-          break
-        case 'PAYPAL':
-          // Redirect to PayPal
-          if (data.url) {
-            window.location.href = data.url
-          }
-          break
         case 'RAZORPAY':
           // Initialize Razorpay
           if (data.orderId) {
@@ -130,9 +105,9 @@ export function CheckoutForm({ wallpaper, user }: CheckoutFormProps) {
     }
   }
 
-  const initRazorpay = (data: { orderId: string; amount: number; currency: string }) => {
+  const initRazorpay = (data: { orderId: string; amount: number; currency: string; dbOrderId: string; key: string }) => {
     const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key: data.key,
       amount: data.amount,
       currency: data.currency,
       name: 'WallCraft',
@@ -143,7 +118,10 @@ export function CheckoutForm({ wallpaper, user }: CheckoutFormProps) {
         const verifyResponse = await fetch('/api/payments/verify/razorpay', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(response),
+          body: JSON.stringify({
+            ...response,
+            dbOrderId: data.dbOrderId,
+          }),
         })
 
         if (verifyResponse.ok) {
@@ -181,7 +159,7 @@ export function CheckoutForm({ wallpaper, user }: CheckoutFormProps) {
       >
         <div className="glass-card p-6 sticky top-28">
           <h2 className="text-lg font-semibold text-white mb-6">Order Summary</h2>
-          
+
           <div className="flex gap-4 mb-6">
             <div className="relative w-24 h-40 rounded-xl overflow-hidden flex-shrink-0">
               <Image

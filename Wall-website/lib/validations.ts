@@ -32,7 +32,7 @@ export const wallpaperSchema = z.object({
 
 export const checkoutSchema = z.object({
   wallpaperId: z.string().min(1, 'Wallpaper ID is required'),
-  paymentMethod: z.enum(['STRIPE', 'PAYPAL', 'RAZORPAY', 'CRYPTO_USDT']),
+  paymentMethod: z.enum(['RAZORPAY', 'CRYPTO_USDT']),
 })
 
 export type SignupInput = z.infer<typeof signupSchema>

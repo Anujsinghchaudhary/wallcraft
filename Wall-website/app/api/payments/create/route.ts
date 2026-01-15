@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import Razorpay from 'razorpay'
 import prisma from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { generateOrderNumber } from '@/lib/utils'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
 })
 
 export async function POST(request: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create order
+    // Create order in database
     const order = await prisma.order.create({
       data: {
         orderNumber: generateOrderNumber(),
@@ -66,85 +67,46 @@ export async function POST(request: NextRequest) {
 
     // Handle different payment methods
     switch (paymentMethod) {
-      case 'STRIPE': {
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency: wallpaper.currency.toLowerCase(),
-                product_data: {
-                  name: wallpaper.title,
-                  description: wallpaper.description || 'Premium Live Wallpaper',
-                  images: [wallpaper.thumbnailUrl],
-                },
-                unit_amount: Math.round(wallpaper.price * 100),
-              },
-              quantity: 1,
-            },
-          ],
-          mode: 'payment',
-          success_url: `${appUrl}/dashboard?payment=success&order=${order.id}`,
-          cancel_url: `${appUrl}/checkout?wallpaper=${wallpaperId}`,
-          customer_email: user.email,
-          metadata: {
+      case 'RAZORPAY': {
+        // Create Razorpay order
+        const razorpayOrder = await razorpay.orders.create({
+          amount: Math.round(wallpaper.price * 100), // Amount in paise
+          currency: 'INR',
+          receipt: order.id,
+          notes: {
             orderId: order.id,
             userId: user.id,
             wallpaperId,
           },
         })
 
-        // Update order with Stripe session ID
+        // Update order with Razorpay order ID
         await prisma.order.update({
           where: { id: order.id },
-          data: { paymentId: session.id },
-        })
-
-        return NextResponse.json({ url: session.url })
-      }
-
-      case 'PAYPAL': {
-        // For PayPal, return the order ID and let the client handle it
-        // In production, you'd create a PayPal order here
-        return NextResponse.json({
-          orderId: order.id,
-          paypalOrderId: order.id, // In production, create PayPal order and return its ID
-          amount: wallpaper.price,
-          currency: wallpaper.currency,
-        })
-      }
-
-      case 'RAZORPAY': {
-        // For Razorpay, return order details for client-side checkout
-        // In production, you'd create a Razorpay order here
-        const razorpayOrderId = `rzp_${order.id}` // In production, create Razorpay order
-
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { paymentId: razorpayOrderId },
+          data: { paymentId: razorpayOrder.id },
         })
 
         return NextResponse.json({
-          orderId: razorpayOrderId,
-          amount: Math.round(wallpaper.price * 100), // Razorpay expects paise
-          currency: 'INR', // Convert to INR for Razorpay
+          orderId: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
           dbOrderId: order.id,
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         })
       }
 
       case 'CRYPTO_USDT': {
         // For crypto payments, redirect to a crypto payment page or use NOWPayments
-        // In production, you'd integrate with a crypto payment provider
         const cryptoAmount = wallpaper.price // In production, convert to USDT rate
 
         await prisma.order.update({
           where: { id: order.id },
           data: {
-            metadata: {
+            metadata: JSON.stringify({
               cryptoAmount,
               cryptoCurrency: 'USDT_TRC20',
               walletAddress: process.env.CRYPTO_WALLET_ADDRESS,
-            },
+            }),
           },
         })
 
@@ -154,7 +116,6 @@ export async function POST(request: NextRequest) {
           currency: 'USDT',
           network: 'TRC20',
           walletAddress: process.env.CRYPTO_WALLET_ADDRESS,
-          // In production, redirect to crypto payment gateway
           url: `${appUrl}/checkout/crypto?order=${order.id}`,
         })
       }

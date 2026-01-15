@@ -36,6 +36,12 @@ export default async function EditWallpaperPage({ params }: PageProps) {
     notFound()
   }
 
+  // Transform wallpaper to match form interface (tags as array)
+  const formWallpaper = {
+    ...wallpaper,
+    tags: wallpaper.tags ? wallpaper.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+  }
+
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
@@ -43,7 +49,7 @@ export default async function EditWallpaperPage({ params }: PageProps) {
         <p className="text-muted-foreground">Update wallpaper details</p>
       </div>
 
-      <WallpaperForm categories={categories} wallpaper={wallpaper} />
+      <WallpaperForm categories={categories} wallpaper={formWallpaper} />
     </div>
   )
 }

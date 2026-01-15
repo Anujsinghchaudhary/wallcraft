@@ -82,8 +82,6 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
 }
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  STRIPE: 'Credit/Debit Card',
-  PAYPAL: 'PayPal',
-  RAZORPAY: 'UPI / Indian Cards',
+  RAZORPAY: 'Cards / UPI / Netbanking',
   CRYPTO_USDT: 'USDT (TRC20)',
 }
