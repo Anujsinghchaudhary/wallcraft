@@ -3,9 +3,19 @@ import crypto from 'crypto'
 import prisma from '@/lib/db'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { formatPrice, getExpiryDate } from '@/lib/utils'
+import { getSession } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
     try {
+        // Verify user is authenticated
+        const session = await getSession()
+        if (!session) {
+            return NextResponse.json(
+                { error: 'Authentication required' },
+                { status: 401 }
+            )
+        }
+
         const body = await request.json()
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, dbOrderId } = body
 

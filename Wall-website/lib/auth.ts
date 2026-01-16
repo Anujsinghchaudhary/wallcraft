@@ -3,9 +3,11 @@ import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 import prisma from './db'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-change-in-production'
-)
+const jwtSecretString = process.env.JWT_SECRET
+if (!jwtSecretString) {
+  throw new Error('CRITICAL: JWT_SECRET environment variable is not set. Application cannot start securely.')
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretString)
 
 const TOKEN_NAME = 'auth-token'
 const TOKEN_EXPIRY = '7d'

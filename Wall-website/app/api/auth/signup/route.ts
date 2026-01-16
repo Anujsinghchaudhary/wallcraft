@@ -3,9 +3,33 @@ import prisma from '@/lib/db'
 import { hashPassword, setSession } from '@/lib/auth'
 import { signupSchema } from '@/lib/validations'
 import { sendWelcomeEmail } from '@/lib/email'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+
+// Helper to get client IP
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown'
+  return ip
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request)
+
+    // Check rate limit (stricter for signup)
+    const rateLimit = checkRateLimit(`signup:${clientIp}`, RATE_LIMITS.SIGNUP)
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: `Too many signup attempts. Please try again in ${Math.ceil(rateLimit.resetIn / 1000)} seconds.` },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil(rateLimit.resetIn / 1000).toString(),
+          }
+        }
+      )
+    }
+
     const body = await request.json()
 
     // Validate input
