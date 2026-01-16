@@ -1,0 +1,6 @@
+{
+    "buildCommand": "cd Wall-website && npm install && npx prisma generate && npm run build",
+    "installCommand": "cd Wall-website && npm install",
+    "framework": "nextjs",
+    "outputDirectory": "Wall-website/.next"
+}
