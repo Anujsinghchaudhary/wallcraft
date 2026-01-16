@@ -3,11 +3,19 @@ import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 import prisma from './db'
 
-const jwtSecretString = process.env.JWT_SECRET
-if (!jwtSecretString) {
-  throw new Error('CRITICAL: JWT_SECRET environment variable is not set. Application cannot start securely.')
+// Lazy initialization to avoid build-time errors on Vercel
+let _jwtSecret: Uint8Array | null = null
+
+function getJwtSecret(): Uint8Array {
+  if (_jwtSecret) return _jwtSecret
+
+  const jwtSecretString = process.env.JWT_SECRET
+  if (!jwtSecretString) {
+    throw new Error('CRITICAL: JWT_SECRET environment variable is not set. Application cannot start securely.')
+  }
+  _jwtSecret = new TextEncoder().encode(jwtSecretString)
+  return _jwtSecret
 }
-const JWT_SECRET = new TextEncoder().encode(jwtSecretString)
 
 const TOKEN_NAME = 'auth-token'
 const TOKEN_EXPIRY = '7d'
@@ -31,12 +39,12 @@ export async function createToken(payload: TokenPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
-    .sign(JWT_SECRET)
+    .sign(getJwtSecret())
 }
 
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
+    const { payload } = await jwtVerify(token, getJwtSecret())
     return payload as unknown as TokenPayload
   } catch {
     return null
