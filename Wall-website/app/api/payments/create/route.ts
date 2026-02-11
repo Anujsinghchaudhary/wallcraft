@@ -4,10 +4,18 @@ import prisma from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { generateOrderNumber } from '@/lib/utils'
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-})
+// Lazy initialization to avoid build-time errors when env vars are not set
+let razorpayClient: Razorpay | null = null
+
+function getRazorpay(): Razorpay {
+  if (!razorpayClient) {
+    razorpayClient = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID!,
+      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    })
+  }
+  return razorpayClient
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,7 +77,7 @@ export async function POST(request: NextRequest) {
     switch (paymentMethod) {
       case 'RAZORPAY': {
         // Create Razorpay order
-        const razorpayOrder = await razorpay.orders.create({
+        const razorpayOrder = await getRazorpay().orders.create({
           amount: Math.round(wallpaper.price * 100), // Amount in paise
           currency: 'INR',
           receipt: order.id,

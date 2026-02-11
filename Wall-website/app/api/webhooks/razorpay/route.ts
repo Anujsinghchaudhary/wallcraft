@@ -4,14 +4,13 @@ import prisma from '@/lib/db'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { formatPrice, getExpiryDate } from '@/lib/utils'
 
-const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET!
-
 export async function POST(request: NextRequest) {
     try {
         const body = await request.text()
         const signature = request.headers.get('x-razorpay-signature')!
 
         // Verify webhook signature
+        const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET!
         const expectedSignature = crypto
             .createHmac('sha256', webhookSecret)
             .update(body)
